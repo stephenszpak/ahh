@@ -1,0 +1,25 @@
+{
+  "name": "@ahx/cli",
+  "version": "0.0.0",
+  "type": "module",
+  "bin": {
+    "ahx": "dist/ahx.js"
+  },
+  "scripts": {
+    "build": "tsup",
+    "test": "pnpm -s build && vitest run",
+    "lint": "eslint \"src/**/*.{ts,tsx}\"",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@ahx/core": "workspace:*",
+    "@ahx/codemods": "workspace:*",
+    "commander": "*",
+    "open": "*"
+  },
+  "devDependencies": {
+    "tsup": "*",
+    "typescript": "*",
+    "vitest": "*"
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "name": "@ahx/codemods",
+  "version": "0.0.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": "./dist/index.js",
+    "./transforms/*": "./dist/transforms/*.js"
+  },
+  "scripts": {
+    "build": "tsup src/index.ts src/transforms/**/*.ts --dts --format esm --sourcemap --clean",
+    "test": "vitest run",
+    "lint": "eslint \"src/**/*.{ts,tsx}\"",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "jscodeshift": "*",
+    "ts-morph": "*"
+  },
+  "devDependencies": {
+    "tsup": "*",
+    "typescript": "*",
+    "vitest": "*"
+  }
+}
+
