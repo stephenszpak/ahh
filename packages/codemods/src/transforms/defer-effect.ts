@@ -1,12 +1,15 @@
 import { Project, SyntaxKind } from 'ts-morph';
 
-export function generateUseVisible() {
-  return `import { useEffect, useState, useRef } from 'react';
+export function generateUseVisible(js = false) {
+  const header = `import { useEffect, useState, useRef } from 'react';`;
+  const refDecl = js ? `const ref = useRef(null);` : `const ref = useRef<HTMLElement | null>(null);`;
+  const ret = js ? `return { ref, isVisible: vis };` : `return { ref, isVisible: vis } as const;`;
+  return `${header}
 export function useVisible(){
-  const ref = useRef<HTMLElement | null>(null);
+  ${refDecl}
   const [vis, setVis] = useState(false);
   useEffect(()=>{ const io = new IntersectionObserver(es=>{ if (es.some(e=>e.isIntersecting)) { setVis(true); io.disconnect(); } }); if (ref.current) io.observe(ref.current as any); return ()=>io.disconnect(); },[]);
-  return { ref, isVisible: vis } as const;
+  ${ret}
 }
 `;
 }

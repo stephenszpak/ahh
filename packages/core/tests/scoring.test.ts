@@ -3,7 +3,7 @@ import { computeHotspotScore, suggestFixes } from '../src/scoring/index.js';
 import type { FileReport } from '../src/types.js';
 
 function fr(signals: Partial<FileReport['signals']>): FileReport {
-  return { file: 'X.tsx', componentNames: ['X'], signals };
+  return { file: 'X.tsx', componentNames: ['X'], signals, isClientComponent: true };
 }
 
 describe('computeHotspotScore', () => {
@@ -39,4 +39,3 @@ describe('suggestFixes', () => {
     );
   });
 });
-

@@ -9,6 +9,12 @@
     ".": "./dist/index.js",
     "./transforms/*": "./dist/transforms/*.js"
   },
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "tsup src/index.ts src/transforms/**/*.ts --dts --format esm --sourcemap --clean",
     "test": "vitest run",
@@ -25,4 +31,3 @@
     "vitest": "*"
   }
 }
-

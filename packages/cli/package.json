@@ -5,6 +5,12 @@
   "bin": {
     "ahx": "dist/ahx.js"
   },
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "tsup",
     "test": "pnpm -s build && vitest run",

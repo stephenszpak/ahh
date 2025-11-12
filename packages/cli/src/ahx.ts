@@ -175,6 +175,9 @@ program
   .option('--routes [routes...]', 'routes to audit (space separated)')
   .option('--budget.jsBytes <n>', 'JS bytes budget', (v) => parseInt(v, 10), Infinity)
   .option('--budget.tbt <n>', 'Total Blocking Time budget', (v) => parseInt(v, 10), Infinity)
+  .option('--budget.lcp <n>', 'Largest Contentful Paint budget (ms)', (v) => parseInt(v, 10), Infinity)
+  .option('--budget.cls <n>', 'Cumulative Layout Shift budget', (v) => parseFloat(v), Infinity)
+  .option('--json-out <file>', 'write CI JSON result to file')
   .action(async (opts) => {
     if (!opts.url) {
       console.error('ci requires --url');
@@ -183,19 +186,56 @@ program
     const routes = (opts.routes && opts.routes.length ? opts.routes : ['/']) as string[];
     const core = await import('@ahx/core');
     const runtime = await core.runRuntimeAudit({ baseUrl: opts.url, routes, headless: true });
-    let failed = false;
+    const budgets = {
+      jsBytes: Number.isFinite(opts.budgetJsBytes) ? opts.budgetJsBytes : undefined,
+      tbt: Number.isFinite(opts.budgetTbt) ? opts.budgetTbt : undefined,
+      lcp: Number.isFinite(opts.budgetLcp) ? opts.budgetLcp : undefined,
+      cls: Number.isFinite(opts.budgetCls) ? opts.budgetCls : undefined
+    } as Record<string, number | undefined>;
+
+    type Offender = { route: string; metric: string; value: number; budget: number };
+    const offenders: Offender[] = [];
     for (const r of runtime) {
-      const { jsBytes = 0, tbt = 0 } = r.metrics || {};
-      if (jsBytes > opts.budgetJsBytes) {
-        console.error(`${r.route}: jsBytes ${jsBytes} > ${opts.budgetJsBytes}`);
-        failed = true;
+      const m = r.metrics || {};
+      if (budgets.jsBytes !== undefined && typeof m.jsBytes === 'number' && m.jsBytes > budgets.jsBytes) {
+        offenders.push({ route: r.route, metric: 'jsBytes', value: m.jsBytes, budget: budgets.jsBytes });
       }
-      if (tbt > opts.budgetTbt) {
-        console.error(`${r.route}: tbt ${tbt} > ${opts.budgetTbt}`);
-        failed = true;
+      if (budgets.tbt !== undefined && typeof m.tbt === 'number' && m.tbt > budgets.tbt) {
+        offenders.push({ route: r.route, metric: 'tbt', value: m.tbt, budget: budgets.tbt });
+      }
+      if (budgets.lcp !== undefined && typeof m.lcp === 'number' && m.lcp > budgets.lcp) {
+        offenders.push({ route: r.route, metric: 'lcp', value: m.lcp, budget: budgets.lcp });
+      }
+      if (budgets.cls !== undefined && typeof m.cls === 'number' && m.cls > budgets.cls) {
+        offenders.push({ route: r.route, metric: 'cls', value: m.cls, budget: budgets.cls });
       }
     }
-    if (failed) process.exit(1);
+
+    // Human-readable table
+    const rows = [
+      ['Route', 'LCP(ms)', 'TBT(ms)', 'CLS', 'JS(bytes)', 'Status'],
+      ...runtime.map((r) => {
+        const m = r.metrics || {};
+        const status = offenders.some((o) => o.route === r.route) ? 'FAIL' : 'OK';
+        return [
+          r.route,
+          fmtNum(m.lcp),
+          fmtNum(m.tbt),
+          typeof m.cls === 'number' ? m.cls.toFixed(3) : '-',
+          fmtNum(m.jsBytes),
+          status
+        ];
+      })
+    ];
+    printTable(rows);
+
+    const result = { ok: offenders.length === 0, budgets, offenders, routes: runtime.map((r) => ({ route: r.route, metrics: r.metrics })) };
+    console.log(JSON.stringify(result));
+    if (opts.jsonOut) {
+      await fs.writeFile(path.resolve(process.cwd(), opts.jsonOut), JSON.stringify(result, null, 2));
+      console.log(`Wrote ${opts.jsonOut}`);
+    }
+    if (offenders.length > 0) process.exit(1);
   });
 
 program
@@ -279,6 +319,17 @@ async function serveReportUI(ahxDir: string) {
     const open = (mod as any).default || (mod as any);
     await open(url);
   } catch {}
+}
+
+function pad(s: string, w: number) { return (s + ' '.repeat(w)).slice(0, w); }
+function fmtNum(n: any) { return typeof n === 'number' ? String(Math.round(n)) : '-'; }
+function printTable(rows: string[][]) {
+  const widths = rows[0].map((_, i) => Math.max(...rows.map(r => String(r[i]).length), 4));
+  for (let i = 0; i < rows.length; i++) {
+    const line = rows[i].map((c, j) => pad(String(c), widths[j])).join('  ');
+    console.log(line);
+    if (i === 0) console.log(widths.map(w => '-'.repeat(w)).join('  '));
+  }
 }
 
 // In test environments, pre-write minimal artifacts synchronously to reduce flakes

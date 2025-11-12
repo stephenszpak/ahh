@@ -16,12 +16,14 @@ export async function runFixes(opts: RunFixesOptions) {
   const applied: Record<string, string[]> = {};
   const projectRoot = opts.projectRoot || process.cwd();
 
+  let preferJs = false;
   for (const filePath of files) {
     const abs = path.isAbsolute(filePath) ? filePath : path.join(projectRoot, filePath);
     let src: string;
     try { src = await fs.readFile(abs, 'utf8'); } catch { continue; }
     let code = src;
     const api = { jscodeshift: j } as any;
+    if (/\.jsx?$/.test(abs)) preferJs = true;
 
     if (opts.fixes.includes('lazy-import') || opts.fixes.includes('all')) {
       code = lazyImport({ path: abs, source: code }, api, {}) || code;
@@ -50,14 +52,14 @@ export async function runFixes(opts: RunFixesOptions) {
 
   // Generate helper files if certain fixes are requested
   if (!opts.dryRun && (opts.fixes.includes('wrap-island') || opts.fixes.includes('all'))) {
-    const islandPath = path.join(projectRoot, 'components', 'Island.tsx');
+    const islandPath = path.join(projectRoot, 'components', preferJs ? 'Island.jsx' : 'Island.tsx');
     await fs.mkdir(path.dirname(islandPath), { recursive: true });
-    await fs.writeFile(islandPath, generateIsland(), 'utf8');
+    await fs.writeFile(islandPath, generateIsland(preferJs), 'utf8');
   }
   if (!opts.dryRun && (opts.fixes.includes('defer-effect') || opts.fixes.includes('all'))) {
-    const hookPath = path.join(projectRoot, 'hooks', 'useVisible.ts');
+    const hookPath = path.join(projectRoot, 'hooks', preferJs ? 'useVisible.js' : 'useVisible.ts');
     await fs.mkdir(path.dirname(hookPath), { recursive: true });
-    await fs.writeFile(hookPath, generateUseVisible(), 'utf8');
+    await fs.writeFile(hookPath, generateUseVisible(preferJs), 'utf8');
   }
 
   return { applied };

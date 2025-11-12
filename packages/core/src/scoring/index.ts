@@ -41,11 +41,12 @@ export function computeHotspotScore(
 export function suggestFixes(fileReport: FileReport): Suggestion[] {
   const out: Suggestion[] = [];
   const s = fileReport.signals;
+  const isClient = !!fileReport.isClientComponent;
 
-  if (s.effectHeaviness && s.effectHeaviness.score >= 5) {
+  if (isClient && s.effectHeaviness && s.effectHeaviness.score >= 5) {
     out.push(suggestion('deferEffects', 'Split heavy effects and defer non-critical work', s.effectHeaviness.detail));
   }
-  if (s.clientOnlyAPIs && s.clientOnlyAPIs.score >= 1) {
+  if (isClient && s.clientOnlyAPIs && s.clientOnlyAPIs.score >= 1) {
     out.push(
       suggestion(
         'isolateClientOnlyLogic',
@@ -54,12 +55,12 @@ export function suggestFixes(fileReport: FileReport): Suggestion[] {
       )
     );
   }
-  if (s.eventDensity && s.eventDensity.score >= 5) {
+  if (isClient && s.eventDensity && s.eventDensity.score >= 5) {
     out.push(
       suggestion('reduceEventHandlers', 'Consolidate or memoize dense event handlers', s.eventDensity.detail)
     );
   }
-  if (s.largeLiteralProps && s.largeLiteralProps.score >= 1) {
+  if (isClient && s.largeLiteralProps && s.largeLiteralProps.score >= 1) {
     out.push(
       suggestion(
         'memoizeLargeProps',
@@ -77,7 +78,7 @@ export function suggestFixes(fileReport: FileReport): Suggestion[] {
       )
     );
   }
-  if (s.eagerCharts && s.eagerCharts.score >= 1) {
+  if (isClient && s.eagerCharts && s.eagerCharts.score >= 1) {
     out.push(
       suggestion(
         'codeSplitCharts',
@@ -104,4 +105,3 @@ function suggestion(kind: SuggestionKind, message: string, related?: string[]): 
 }
 
 export default { computeHotspotScore, suggestFixes };
-

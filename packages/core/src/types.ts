@@ -28,6 +28,11 @@ export type FileReport = {
   file: string;
   componentNames: string[];
   signals: Partial<Record<Signal, SignalScore>>;
+  // Next.js awareness
+  isClientComponent?: boolean;
+  hasServerActions?: boolean;
+  usesNextNavigation?: boolean;
+  usesNextHeaders?: boolean;
 };
 
 // Runtime audit types

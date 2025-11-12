@@ -16,22 +16,26 @@ function getComponentNames(sourceText: string, fileName: string) {
   const file = project.createSourceFile(fileName, sourceText, { overwrite: true });
   const names = new Set<string>();
 
+  const isJsxKind = (k: number) =>
+    [SyntaxKind.JsxElement, SyntaxKind.JsxSelfClosingElement, SyntaxKind.JsxFragment].includes(k);
+  const isJsxExpr = (expr: any): boolean => {
+    if (!expr) return false;
+    let node: any = expr;
+    // Unwrap parentheses
+    while (node && node.getKind && node.getKind() === SyntaxKind.ParenthesizedExpression) {
+      node = node.getExpression?.();
+    }
+    return !!(node && node.getKind && isJsxKind(node.getKind()));
+  };
+
   // function declarations
   for (const fn of file.getFunctions()) {
     const name = fn.getName();
     if (!name) continue;
     if (/^[A-Z]/.test(name)) {
-      const returnsJsx = fn.getDescendantsOfKind(SyntaxKind.ReturnStatement).some((r: any) => {
-        const expr = r.getExpression();
-        return (
-          !!expr &&
-          [
-            SyntaxKind.JsxElement,
-            SyntaxKind.JsxSelfClosingElement,
-            SyntaxKind.JsxFragment
-          ].includes(expr.getKind())
-        );
-      });
+      const returnsJsx = fn
+        .getDescendantsOfKind(SyntaxKind.ReturnStatement)
+        .some((r: any) => isJsxExpr(r.getExpression()));
       if (returnsJsx) names.add(name);
     }
   }
@@ -47,17 +51,7 @@ function getComponentNames(sourceText: string, fileName: string) {
       const fn: any = init;
       const returnsJsx = fn
         .getDescendantsOfKind(SyntaxKind.ReturnStatement)
-        .some((r: any) => {
-          const expr = r.getExpression();
-          return (
-            !!expr &&
-            [
-              SyntaxKind.JsxElement,
-              SyntaxKind.JsxSelfClosingElement,
-              SyntaxKind.JsxFragment
-            ].includes(expr.getKind())
-          );
-        });
+        .some((r: any) => isJsxExpr(r.getExpression()));
       if (returnsJsx) names.add(name);
     }
   }
@@ -270,6 +264,18 @@ function analyzeContext(sourceText: string, fileName: string): SignalScore | und
 export function analyzeFile(sourceText: string, filePath: string): FileReport {
   const fileName = filePath.endsWith('.tsx') || filePath.endsWith('.jsx') ? filePath : filePath + '.tsx';
   const componentNames = getComponentNames(sourceText, fileName);
+  // Detect Next.js specific flags and pragmas
+  const isClientComponent = /['"]use client['"]/.test(sourceText.split(/\r?\n/).slice(0, 5).join('\n'));
+  const hasServerActions = /['"]use server['"]/m.test(sourceText);
+  // Imports for next/navigation or next/headers
+  const projectForImports = createProject();
+  const fileForImports = projectForImports.createSourceFile(fileName + '.imports', sourceText, { overwrite: true });
+  const usesNextNavigation = fileForImports
+    .getImportDeclarations()
+    .some((imp) => imp.getModuleSpecifierValue() === 'next/navigation');
+  const usesNextHeaders = fileForImports
+    .getImportDeclarations()
+    .some((imp) => imp.getModuleSpecifierValue() === 'next/headers');
   const effects = analyzeEffects(sourceText, fileName);
   const clientAPIs = analyzeClientAPIs(sourceText, fileName);
   const events = analyzeEventDensity(sourceText, fileName);
@@ -288,6 +294,10 @@ export function analyzeFile(sourceText: string, filePath: string): FileReport {
       ...(events ? { eventDensity: events } : {}),
       ...(largeProps ? { largeLiteralProps: largeProps } : {}),
       ...(context ? { contextAtRoot: context } : {})
-    }
+    },
+    isClientComponent,
+    hasServerActions,
+    usesNextNavigation,
+    usesNextHeaders
   };
 }

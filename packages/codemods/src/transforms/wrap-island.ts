@@ -2,12 +2,17 @@ import type { API, FileInfo } from 'jscodeshift';
 
 type Options = { target?: string; mode?: 'visible' | 'idle' };
 
-export function generateIsland() {
-  return `import React, { useEffect, useRef, useState } from 'react';
-type Mode = 'visible' | 'idle';
-export default function Island({ children, mode = 'visible' as Mode }: { children: React.ReactNode; mode?: Mode }){
+export function generateIsland(js = false) {
+  const header = `import React, { useEffect, useRef, useState } from 'react';`;
+  const modeType = js ? '' : `type Mode = 'visible' | 'idle';\n`;
+  const props = js
+    ? `({ children, mode = 'visible' })`
+    : `({ children, mode = 'visible' as Mode }: { children: React.ReactNode; mode?: Mode })`;
+  const refDecl = js ? `const ref = useRef(null);` : `const ref = useRef<HTMLDivElement>(null);`;
+  return `${header}
+${modeType}export default function Island${props}{
   const [hydrated, setHydrated] = useState(mode === 'idle' ? false : false);
-  const ref = useRef<HTMLDivElement>(null);
+  ${refDecl}
   useEffect(() => {
     if (mode === 'idle') {
       const cb = () => setHydrated(true);

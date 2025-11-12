@@ -10,9 +10,13 @@
     "lint": "pnpm -r lint",
     "format": "prettier -w .",
     "typecheck": "pnpm -r typecheck",
-    "fixtures:serve": "pnpm -C fixtures/next-basic dev"
+    "fixtures:serve": "pnpm -C fixtures/next-basic dev",
+    "changeset": "changeset",
+    "release:version": "changeset version",
+    "release:publish": "changeset publish"
   },
   "devDependencies": {
+    "@changesets/cli": "^2.27.8",
     "@types/node": "*",
     "@typescript-eslint/eslint-plugin": "*",
     "@typescript-eslint/parser": "*",
